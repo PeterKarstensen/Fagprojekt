@@ -1,0 +1,42 @@
+#include "TimerOne.h"
+
+int volt1[20][2];
+int curr1[20][2];
+int volt2[20][2];
+int curr2[20][2];
+int volt3[20][2];
+int curr3[20][2];
+
+void setup() {
+  pinMode(A0,INPUT);
+  pinMode(A1,INPUT);
+  pinMode(A2,INPUT);
+  pinMode(A3,INPUT);
+  pinMode(A4,INPUT);
+  pinMode(A5,INPUT);
+}
+
+void loop() {
+  unsigned long time0 = millis();
+  measure(0,&volt1[0][0],time0);
+  measure(1,&curr1[0][0],time0);
+  measure(2,&volt2[0][0],time0);
+  measure(3,&curr2[0][0],time0);
+  measure(4,&volt3[0][0],time0);
+  measure(5,&curr3[0][0],time0);
+}
+
+
+void measure(char pin,int *measurement,unsigned long time0){
+  char i;
+  for(i=0; i<20; i++){
+    *measurement=analogRead(pin);
+    measurement++;
+    *measurement=int(time0 - millis());
+    measurement++;
+  }
+}
+
+void calculateRMS(){
+  
+}
