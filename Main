@@ -1,4 +1,3 @@
-#include "TimerOne.h"
 
 int volt1[20][2];
 int curr1[20][2];
@@ -17,13 +16,24 @@ void setup() {
 }
 
 void loop() {
+  
   unsigned long time0 = millis();
+  int PF1 ,PF2 ,PF3 , Power1, Power2, Power3;
+  
   measure(0,&volt1[0][0],time0);
   measure(1,&curr1[0][0],time0);
   measure(2,&volt2[0][0],time0);
   measure(3,&curr2[0][0],time0);
   measure(4,&volt3[0][0],time0);
   measure(5,&curr3[0][0],time0);
+
+  PF1 = calculate_PF(&volt1[0][0],&curr1[0][0]);
+  PF2 = calculate_PF(&volt2[0][0],&curr2[0][0]);
+  PF3 = calculate_PF(&volt3[0][0],&curr3[0][0]);
+
+  Power1 = calculate_Power(&volt1[0][0],&curr1[0][0],PF1);
+  Power2 = calculate_Power(&volt2[0][0],&curr2[0][0],PF2);
+  Power3 = calculate_Power(&volt3[0][0],&curr3[0][0],PF3);
 }
 
 
@@ -37,6 +47,47 @@ void measure(char pin,int *measurement,unsigned long time0){
   }
 }
 
-void calculateRMS(){
+int calculate_PF(int *volt,int *curr) {
+  char i;
+  int *temp;
+  int angleV, angleC, PF;
+  for(i=0; i<20; i++) {
+    if( ((*volt) <= 2.56) && ((*volt) >= 2.44) ) {
+      temp = volt;
+      temp++;
+      angleV = *temp;
+    }
+    volt += 2;
+  }
+  for(i=0; i<20; i++) {
+    if( ((*curr) <= 2.56) && ((*curr) >= 2.44) ) {
+      temp = curr;
+      temp++;
+      angleC = *temp;
+    }
+    curr += 2;
+  }
+  PF = angleV - angleC;
+  return PF;
+}
+
+int calculate_Power(int *volt, int *curr, int PF) {
+  char i;
+  int volt_av = *volt;
+  int curr_av = *curr;
+  int Power;
+  for(i=0; i<20; i++) {
+    volt += 2;
+    curr += 2;
+    volt_av += *volt;
+    curr_av += *curr;
+  }
+  volt_av = volt_av / 20;
+  curr_av = curr_av / 20;
+  Power = volt_av * curr_av * cos(PF);
+  return Power;
+}
+
+void pack_Data() {
   
 }
