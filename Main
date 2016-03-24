@@ -1,4 +1,5 @@
 
+// I disse gemmes den øjeblikkelige strøm og spænding
 int volt1[20][2];
 int curr1[20][2];
 int volt2[20][2];
@@ -6,6 +7,7 @@ int curr2[20][2];
 int volt3[20][2];
 int curr3[20][2];
 
+// Initialiserer boardet
 void setup() {
   pinMode(A0,INPUT);
   pinMode(A1,INPUT);
@@ -15,10 +17,12 @@ void setup() {
   pinMode(A5,INPUT);
 }
 
+// Dette er "main" som kører en uendelig loop
 void loop() {
-  
-  unsigned long time0 = millis();
-  int PF1 ,PF2 ,PF3 , Power1, Power2, Power3;
+
+  unsigned long time0 = millis();                                   // Tiden når loopet starter
+  int volt1_av, volt2_av, volt3_av, curr1_av, curr2_av, curr3_av;   // De øvrige dataer der skal sendes. Skal måske være globale
+  int PF1 ,PF2 ,PF3 , Power1, Power2, Power3;                       // Skal måske være globale
   
   measure(0,&volt1[0][0],time0);
   measure(1,&curr1[0][0],time0);
@@ -31,12 +35,20 @@ void loop() {
   PF2 = calculate_PF(&volt2[0][0],&curr2[0][0]);
   PF3 = calculate_PF(&volt3[0][0],&curr3[0][0]);
 
-  Power1 = calculate_Power(&volt1[0][0],&curr1[0][0],PF1);
-  Power2 = calculate_Power(&volt2[0][0],&curr2[0][0],PF2);
-  Power3 = calculate_Power(&volt3[0][0],&curr3[0][0],PF3);
+  volt1_av = average(&volt1[0][0]);
+  volt2_av = average(&volt2[0][0]);
+  volt3_av = average(&volt3[0][0]);
+  curr1_av = average(&curr1[0][0]);
+  curr2_av = average(&curr2[0][0]);
+  curr3_av = average(&curr3[0][0]);
+
+  Power1 = volt1_av * curr1_av * cos(PF1);
+  Power2 = volt2_av * curr2_av * cos(PF2);
+  Power3 = volt3_av * curr3_av * cos(PF3);
 }
 
-
+// Loader arrays med værdier fra faserne og tiden, det blev målt i. 
+// Tiden bruges bagefter til at udregne PF
 void measure(char pin,int *measurement,unsigned long time0){
   char i;
   for(i=0; i<20; i++){
@@ -47,12 +59,16 @@ void measure(char pin,int *measurement,unsigned long time0){
   }
 }
 
+
+// Udregner PF. PF returneres. 
+// Da ADC bruger 10bits, vil 512 svare til ca. 2.5V. 
+// Det laveste ADC inputtene kan måle er ca. 4.88mV, dvs. den bliver et bit højere.
 int calculate_PF(int *volt,int *curr) {
   char i;
   int *temp;
   int angleV, angleC, PF;
   for(i=0; i<20; i++) {
-    if( ((*volt) <= 2.56) && ((*volt) >= 2.44) ) {
+    if( ((*volt) <= 525) && ((*volt) >= 499) ) {
       temp = volt;
       temp++;
       angleV = *temp;
@@ -60,7 +76,7 @@ int calculate_PF(int *volt,int *curr) {
     volt += 2;
   }
   for(i=0; i<20; i++) {
-    if( ((*curr) <= 2.56) && ((*curr) >= 2.44) ) {
+    if( ((*curr) <= 525) && ((*volt) >= 499) ) {
       temp = curr;
       temp++;
       angleC = *temp;
@@ -71,21 +87,16 @@ int calculate_PF(int *volt,int *curr) {
   return PF;
 }
 
-int calculate_Power(int *volt, int *curr, int PF) {
+// Udregner enten gennemsnits spændingen eller strøm
+int average(int *array) {
   char i;
-  int volt_av = *volt;
-  int curr_av = *curr;
-  int Power;
+  int av = *array;
   for(i=0; i<20; i++) {
-    volt += 2;
-    curr += 2;
-    volt_av += *volt;
-    curr_av += *curr;
+    array += 2;
+    av += *array;
   }
-  volt_av = volt_av / 20;
-  curr_av = curr_av / 20;
-  Power = volt_av * curr_av * cos(PF);
-  return Power;
+  av = av / 20;
+  return av;
 }
 
 void pack_Data() {
