@@ -1,3 +1,4 @@
+#include <VirtualWire.h>
 
 // I disse gemmes den øjeblikkelige strøm og spænding
 int volt1[20][2];
@@ -6,15 +7,20 @@ int volt2[20][2];
 int curr2[20][2];
 int volt3[20][2];
 int curr3[20][2];
+// Beskeden, der sendes trådløst
+unsigned char msg[18];
 
 // Initialiserer boardet
 void setup() {
+  Serial.begin(9600);
   pinMode(A0,INPUT);
   pinMode(A1,INPUT);
   pinMode(A2,INPUT);
   pinMode(A3,INPUT);
   pinMode(A4,INPUT);
   pinMode(A5,INPUT);
+  vw_set_ptt_inverted(true);  // Required for DR3100
+  vw_setup(9600);             // Bits per sec
 }
 
 // Dette er "main" som kører en uendelig loop
@@ -23,7 +29,9 @@ void loop() {
   unsigned long time0 = millis();                                   // Tiden når loopet starter
   int volt1_av, volt2_av, volt3_av, curr1_av, curr2_av, curr3_av;   // De øvrige dataer der skal sendes. Skal måske være globale
   int PF1 ,PF2 ,PF3 , Power1, Power2, Power3;                       // Skal måske være globale
-  
+  char index = 0;
+
+  // Målingerne foretages
   measure(0,&volt1[0][0],time0);
   measure(1,&curr1[0][0],time0);
   measure(2,&volt2[0][0],time0);
@@ -31,10 +39,12 @@ void loop() {
   measure(4,&volt3[0][0],time0);
   measure(5,&curr3[0][0],time0);
 
+  // PF udregnes
   PF1 = calculate_PF(&volt1[0][0],&curr1[0][0]);
   PF2 = calculate_PF(&volt2[0][0],&curr2[0][0]);
   PF3 = calculate_PF(&volt3[0][0],&curr3[0][0]);
 
+  // Gennemsnitsværdier udregnes
   volt1_av = average(&volt1[0][0]);
   volt2_av = average(&volt2[0][0]);
   volt3_av = average(&volt3[0][0]);
@@ -42,9 +52,24 @@ void loop() {
   curr2_av = average(&curr2[0][0]);
   curr3_av = average(&curr3[0][0]);
 
+  // Effekt udregnes
   Power1 = volt1_av * curr1_av * cos(PF1);
   Power2 = volt2_av * curr2_av * cos(PF2);
   Power3 = volt3_av * curr3_av * cos(PF3);
+
+  // Beskeden laves, rækkefølgen er: 1.fase; spænding, strøm, effekt -  2.fase; spænding, strøm, effekt -  3.fase; spænding, strøm, effekt
+  pack_Data(&index,volt1_av,&msg[index]);
+  pack_Data(&index,curr1_av,&msg[index]);
+  pack_Data(&index,Power1,&msg[index]);
+  pack_Data(&index,volt2_av,&msg[index]);
+  pack_Data(&index,curr2_av,&msg[index]);
+  pack_Data(&index,Power2,&msg[index]);
+  pack_Data(&index,volt3_av,&msg[index]);
+  pack_Data(&index,curr3_av,&msg[index]);
+  pack_Data(&index,Power3,&msg[index]);
+
+  // Sender beskeden
+  send_msg(msg);
 }
 
 // Loader arrays med værdier fra faserne og tiden, det blev målt i. 
@@ -99,6 +124,18 @@ int average(int *array) {
   return av;
 }
 
-void pack_Data() {
-  
+// Tager en af udregningerne og ligger det ind besked arrayet. 
+// Da udregningerne er int, så skal de deles op i bytes, da beskeden kun kan sendes som char med DR3100 modulet.
+void pack_Data(char *index, int value, unsigned char *msg) {
+  unsigned char value_low = value & 0xFF;
+  unsigned char value_high = value >> 8;
+  *msg = value_high; 
+  msg++;
+  *msg = value_low;
+  (*index) += 2;
+}
+
+void send_msg(unsigned char *msg) {
+    vw_send(msg, sizeof(msg));
+    vw_wait_tx();
 }
